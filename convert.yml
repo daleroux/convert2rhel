@@ -1,0 +1,83 @@
+---
+- hosts: centoshosts
+  become: true
+  vars:
+    convert2rhel_timeout: 14400
+    convert2rhel_retry_interval: 15
+  tasks:
+  - name: verify operating system
+    assert:
+      that: "ansible_distribution == 'CentOS'"
+
+  - name: Exit if CentOs version is not 7
+    fail: 
+      msg: "CentOs version is not 7"
+    when: ( ansible_distribution_major_version != '7' ) 
+
+#  - name: Install convert2rhel rpm from Red Hat OS and App Modernization Group GitHub
+#    yum:
+#      name: https://github.com/oamg/convert2rhel/releases/download/v0.20/convert2rhel-0.20-1.el7.noarch.rpm
+#      state: present
+
+  - name: Pull Red Hat RPM Signing GPG key
+    get_url:
+      url: https://www.redhat.com/security/data/fd431d51.txt
+      dest: /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+      validate_certs: no
+      mode: '0644'
+
+  - name: Create receiving directory if it does not exist
+    file:
+      path: /etc/rhsm/ca
+      state: directory
+      mode: '0750'
+      owner: root
+      group: root
+
+
+  - name: Download the SSL certificate of the https://cdn.redhat.com server
+    get_url:
+      url: https://ftp.redhat.com/redhat/convert2rhel/redhat-uep.pem
+      dest: /etc/rhsm/ca/redhat-uep.pem
+      validate_certs: no
+      mode: '0644'
+
+  - name: configure the Convert2RHEL YUM repository
+    get_url:
+      url: https://ftp.redhat.com/redhat/convert2rhel/7/convert2rhel.repo
+      dest: /etc/yum.repos.d/convert2rhel.repo
+      validate_certs: no
+      mode: '0644'
+
+  - name: Install convert2rhel 
+    yum:
+      name: convert2rhel
+      state: latest
+
+  - name: download the katello-ca-consumer-latest package from the Satellite server
+    get_url:
+      url: https://192.168.0.25/pub/katello-ca-consumer-latest.noarch.rpm
+      dest: /usr/share/convert2rhel/subscription-manager/katello-ca-consumer-latest.noarch.rpm
+      validate_certs: no
+      mode: '0644'
+
+  - name: update system with the latest available packages
+    yum:
+      name: '*'
+      state: latest
+
+  - name: Launch conversion asynchronously
+    command: >-
+      convert2rhel --org demo --activationkey AK_CV_RHEL7 -y
+    async: "{{ convert2rhel_timeout }}"
+    poll: 0
+    register: convert2rhel_async
+
+  - name: Check if conversion is finished
+    async_status:
+      jid: "{{ convert2rhel_async.ansible_job_id }}"
+    register: job_result
+    until: job_result.finished
+    retries: "{{ ( convert2rhel_timeout / convert2rhel_retry_interval ) | int }}"
+    delay: "{{ convert2rhel_retry_interval }}"
+
