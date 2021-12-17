@@ -1,0 +1,11 @@
+---
+repos2enable:
+  - tag: "rhel-7-server-satellite-tools-6.9-rpms"
+  - tag: "rhel-7-server-rpms"
+  - tag: "rhel-7-server-optional-rpms"
+  - tag: "rhel-7-server-extras-rpms"
+
+packages2remove:
+  - name: "convert2rhel"
+  - name: "centos-gpg-keys"
+

@@ -58,3 +58,28 @@
     until: job_result.finished
     retries: "{{ ( convert2rhel_timeout / convert2rhel_retry_interval ) | int }}"
     delay: "{{ convert2rhel_retry_interval }}"
+
+  - name: Reboot the system
+    reboot:
+
+  - name: Remove CentOS packages remaining on system
+    yum:
+      name: "{{ item.name }}"
+      state: absent
+    with_items: "{{ packages2remove }}"
+
+  - name: Remove /etc/yum.repos.d/convert2rhel.repo
+    file:
+      path: /etc/yum.repos.d/convert2rhel.repo
+      state: absent
+
+  - name: Disable all RHSM repositories
+    rhsm_repository:
+      name: '*'
+      state: disabled
+
+  - name: Enable repos listed in repos_and_packages.yml
+    rhsm_repository:
+      name: "{{ item.tag }}"
+      state: present
+    with_items: "{{ repos2enable }}"
