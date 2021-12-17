@@ -1,0 +1,14 @@
+---
+file2download:
+  # Red Hat RPM Signing GPG key
+  - name: "Pull Red Hat RPM Signing GPG key"
+    url: "https://www.redhat.com/security/data/fd431d51.txt"
+    dest: "/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release"
+  # SSL certificate of the https://cdn.redhat.com
+  - name: "Download the SSL certificate of the https://cdn.redhat.com server"
+    url: "https://ftp.redhat.com/redhat/convert2rhel/redhat-uep.pem"
+    dest: "/etc/rhsm/ca/redhat-uep.pem"
+  # Convert2RHEL YUM repository
+  - name: "configure the Convert2RHEL YUM repository"
+    url: "https://ftp.redhat.com/redhat/convert2rhel/7/convert2rhel.repo"
+    dest: "/etc/yum.repos.d/convert2rhel.repo"

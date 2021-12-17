@@ -1,9 +1,6 @@
 ---
 - hosts: centoshosts
   become: true
-  vars:
-    convert2rhel_timeout: 14400
-    convert2rhel_retry_interval: 15
   tasks:
   - name: verify operating system
     assert:
@@ -14,40 +11,21 @@
       msg: "CentOs version is not 7"
     when: ( ansible_distribution_major_version != '7' ) 
 
-#  - name: Install convert2rhel rpm from Red Hat OS and App Modernization Group GitHub
-#    yum:
-#      name: https://github.com/oamg/convert2rhel/releases/download/v0.20/convert2rhel-0.20-1.el7.noarch.rpm
-#      state: present
-
-  - name: Pull Red Hat RPM Signing GPG key
-    get_url:
-      url: https://www.redhat.com/security/data/fd431d51.txt
-      dest: /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-      validate_certs: no
-      mode: '0644'
-
-  - name: Create receiving directory if it does not exist
+  - name: Create /etc/rhsm/ca directory if it does not exist
     file:
       path: /etc/rhsm/ca
       state: directory
       mode: '0750'
       owner: root
       group: root
-
-
-  - name: Download the SSL certificate of the https://cdn.redhat.com server
+    
+  - name: Looping to download the files requied for the conversion
     get_url:
-      url: https://ftp.redhat.com/redhat/convert2rhel/redhat-uep.pem
-      dest: /etc/rhsm/ca/redhat-uep.pem
+      url: "{{ item.url }}"
+      dest: "{{ item.dest }}"
       validate_certs: no
       mode: '0644'
-
-  - name: configure the Convert2RHEL YUM repository
-    get_url:
-      url: https://ftp.redhat.com/redhat/convert2rhel/7/convert2rhel.repo
-      dest: /etc/yum.repos.d/convert2rhel.repo
-      validate_certs: no
-      mode: '0644'
+    with_items: "{{ file2download }}"
 
   - name: Install convert2rhel 
     yum:
@@ -56,7 +34,7 @@
 
   - name: download the katello-ca-consumer-latest package from the Satellite server
     get_url:
-      url: https://192.168.0.25/pub/katello-ca-consumer-latest.noarch.rpm
+      url: "https://{{ mysatellite }}/pub/katello-ca-consumer-latest.noarch.rpm"
       dest: /usr/share/convert2rhel/subscription-manager/katello-ca-consumer-latest.noarch.rpm
       validate_certs: no
       mode: '0644'
@@ -80,4 +58,3 @@
     until: job_result.finished
     retries: "{{ ( convert2rhel_timeout / convert2rhel_retry_interval ) | int }}"
     delay: "{{ convert2rhel_retry_interval }}"
-
